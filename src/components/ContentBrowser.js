@@ -3,6 +3,7 @@ import { Auth } from 'aws-amplify';
 import { Authenticator } from '@aws-amplify/ui-react';
 import AudioPlayer from './AudioPlayer';
 
+// Import background images
 import monssonragaImg from '../assets/images/monssonraga.jfif';
 import paramathmaImg from '../assets/images/paramathma.jfif';
 import rajImg from '../assets/images/raj.jfif';
@@ -55,9 +56,10 @@ const ContentBrowser = () => {
       const url = category && category !== 'all' 
         ? `${API_BASE_URL}/content?category=${category}`
         : `${API_BASE_URL}/content`;
+      
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch content');
-
+      
       const data = await response.json();
       setContent(data.items || []);
       setError(null);
@@ -95,7 +97,7 @@ const ContentBrowser = () => {
     return (
       <div className="auth-overlay">
         <div className="auth-modal">
-          <button
+          <button 
             className="close-auth"
             onClick={() => setShowAuth(false)}
           >
@@ -134,8 +136,8 @@ const ContentBrowser = () => {
 
       <div className="category-filter">
         <label>Browse by Category: </label>
-        <select
-          value={selectedCategory}
+        <select 
+          value={selectedCategory} 
           onChange={(e) => handleCategoryChange(e.target.value)}
         >
           {categories.map(cat => (
@@ -157,7 +159,7 @@ const ContentBrowser = () => {
             Object.entries(groupedContent).map(([category, items]) => (
               <div key={category} className="category-section">
                 <h2>
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                  {category.charAt(0).toUpperCase() + category.slice(1)} 
                   <span className="count">({items.length})</span>
                 </h2>
                 <div className="content-items">
@@ -180,7 +182,7 @@ const ContentBrowser = () => {
       {currentTrack && user && (
         <div className="current-player">
           <div className="player-container">
-            <button
+            <button 
               className="close-player"
               onClick={() => setCurrentTrack(null)}
             >
@@ -208,7 +210,7 @@ const ContentItem = ({ item, onPlay }) => {
         default: return educationalImg;
       }
     }
-
+    
     switch (item.category) {
       case 'educational': return educationalImg;
       case 'stories':
@@ -220,7 +222,7 @@ const ContentItem = ({ item, onPlay }) => {
   const backgroundImage = getBackgroundImage();
 
   return (
-    <div
+    <div 
       className="content-item"
       style={{
         backgroundImage: `url(${backgroundImage})`,
@@ -239,7 +241,7 @@ const ContentItem = ({ item, onPlay }) => {
             {item.artist && <span className="artist">🎤 {item.artist}</span>}
           </div>
         </div>
-        <button
+        <button 
           onClick={() => onPlay(item)}
           className="play-button"
         >
