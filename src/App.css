@@ -415,3 +415,101 @@ body {
     align-items: flex-start;
   }
 }
+/* Add to the end of your existing App.css */
+
+/* Authentication Styles */
+.authenticated-app {
+  min-height: 100vh;
+}
+
+.auth-header {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  padding: 1rem 2rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+}
+
+.user-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  font-weight: 500;
+}
+
+.sign-out-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sign-out-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Customize Amplify UI Components */
+[data-amplify-authenticator] {
+  --amplify-colors-brand-primary-60: #667eea;
+  --amplify-colors-brand-primary-80: #764ba2;
+  --amplify-colors-brand-primary-90: #667eea;
+  --amplify-colors-brand-primary-100: #764ba2;
+  --amplify-colors-background-primary: rgba(255, 255, 255, 0.95);
+  --amplify-colors-background-secondary: rgba(255, 255, 255, 0.9);
+}
+
+[data-amplify-authenticator] .amplify-tabs {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  max-width: 400px;
+  margin: 2rem auto;
+}
+
+[data-amplify-authenticator] .amplify-button--primary {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  border: none;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+[data-amplify-authenticator] .amplify-button--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+[data-amplify-authenticator] .amplify-input {
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+[data-amplify-authenticator] .amplify-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Mobile Authentication */
+@media (max-width: 768px) {
+  .auth-header {
+    padding: 1rem;
+    margin: 0 1rem 1rem 1rem;
+  }
+  
+  .user-info {
+    flex-direction: column;
+    gap: 0.5rem;
+    text-align: center;
+  }
+  
+  [data-amplify-authenticator] .amplify-tabs {
+    margin: 1rem;
+    max-width: none;
+  }
+}
