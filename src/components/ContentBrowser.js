@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { getCurrentUser } from 'aws-amplify/auth';
+import { Authenticator } from '@aws-amplify/ui-react';
 import AudioPlayer from './AudioPlayer';
 
-// Import all background images
+// Import background images
 import monssonragaImg from '../assets/images/monssonraga.jfif';
 import paramathmaImg from '../assets/images/paramathma.jfif';
 import rajImg from '../assets/images/raj.jfif';
@@ -16,14 +18,25 @@ const ContentBrowser = () => {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
 
-  // Your working API base URL
   const API_BASE_URL = 'https://1929mh4l2j.execute-api.ap-south-1.amazonaws.com/prod';
 
   useEffect(() => {
     fetchCategories();
     fetchContent();
+    checkAuthStatus();
   }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    } catch {
+      setUser(null);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -62,10 +75,13 @@ const ContentBrowser = () => {
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
     fetchContent(category);
-    setCurrentTrack(null);
   };
 
   const playTrack = (track) => {
+    if (!user) {
+      setShowAuth(true);
+      return;
+    }
     setCurrentTrack(track);
   };
 
@@ -77,16 +93,23 @@ const ContentBrowser = () => {
     return acc;
   }, {});
 
-  if (error) {
+  if (showAuth) {
     return (
-      <div className="error-container">
-        <h1>🎵 PKRK FM</h1>
-        <div className="error">
-          <h2>Oops! Something went wrong</h2>
-          <p>{error}</p>
-          <button onClick={() => window.location.reload()}>
-            Try Again
+      <div className="auth-overlay">
+        <div className="auth-modal">
+          <button 
+            className="close-auth"
+            onClick={() => setShowAuth(false)}
+          >
+            ✕
           </button>
+          <Authenticator>
+            {({ signOut, user }) => {
+              setUser(user);
+              setShowAuth(false);
+              return null;
+            }}
+          </Authenticator>
         </div>
       </div>
     );
@@ -97,8 +120,17 @@ const ContentBrowser = () => {
       <header className="app-header">
         <h1>🎵 PKRK FM</h1>
         <p>Your Favorite Kannada Audio Streaming Platform</p>
-        <div className="stats">
+        <div className="header-actions">
           <span>{content.length} Audio Files Available</span>
+          {user ? (
+            <button onClick={() => setUser(null)} className="auth-btn">
+              Sign Out ({user.attributes?.email})
+            </button>
+          ) : (
+            <button onClick={() => setShowAuth(true)} className="auth-btn">
+              Sign In / Sign Up
+            </button>
+          )}
         </div>
       </header>
 
@@ -147,7 +179,7 @@ const ContentBrowser = () => {
         </div>
       )}
 
-      {currentTrack && (
+      {currentTrack && user && (
         <div className="current-player">
           <div className="player-container">
             <button 
@@ -169,24 +201,21 @@ const ContentBrowser = () => {
 };
 
 const ContentItem = ({ item, onPlay }) => {
-  // Function to get background image based on content
   const getBackgroundImage = () => {
-    // For music: use album/artist name
     if (item.category === 'music') {
       switch (item.album?.toLowerCase()) {
         case 'monssonraga': return monssonragaImg;
         case 'paramathma': return paramathmaImg;
         case 'raj': return rajImg;
-        default: return null;
+        default: return educationalImg;
       }
     }
     
-    // For other categories
     switch (item.category) {
       case 'educational': return educationalImg;
       case 'stories':
         return item.subcategory === 'horror' ? horrorImg : storiesImg;
-      default: return null;
+      default: return educationalImg;
     }
   };
 
@@ -196,7 +225,7 @@ const ContentItem = ({ item, onPlay }) => {
     <div 
       className="content-item"
       style={{
-        backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
+        backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -210,14 +239,6 @@ const ContentItem = ({ item, onPlay }) => {
             <span className="duration">⏱️ {item.duration}</span>
             <span className="language">🗣️ {item.language}</span>
             {item.artist && <span className="artist">🎤 {item.artist}</span>}
-            {item.season && (
-              <span className="season-episode">
-                📺 S{item.season}E{item.episode}
-              </span>
-            )}
-            {item.subcategory && (
-              <span className="subcategory">🏷️ {item.subcategory}</span>
-            )}
           </div>
         </div>
         <button 
