@@ -103,13 +103,19 @@ const ContentBrowser = () => {
           >
             ✕
           </button>
-          <Authenticator>
-            {({ signOut, user }) => {
-              setUser(user);
-              setShowAuth(false);
-              return null;
-            }}
-          </Authenticator>
+          <div className="auth-container">
+            <Authenticator
+              variation="modal"
+              hideSignUp={false}
+              signUpAttributes={['email']}
+            >
+              {({ signOut, user }) => {
+                setUser(user);
+                setShowAuth(false);
+                return null;
+              }}
+            </Authenticator>
+          </div>
         </div>
       </div>
     );

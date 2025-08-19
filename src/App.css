@@ -363,6 +363,228 @@ body {
   font-weight: 500;
 }
 
+/* Authentication Modal Styles */
+.auth-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(5px);
+}
+
+.auth-modal {
+  position: relative;
+  background: white;
+  border-radius: 20px;
+  padding: 0;
+  max-width: 450px;
+  width: 90%;
+  max-height: 85vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.close-auth {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 10;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-auth:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.auth-container {
+  padding: 2rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.auth-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.auth-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+}
+
+/* Amplify UI Custom Styling */
+:root {
+  --amplify-colors-brand-primary-60: #667eea;
+  --amplify-colors-brand-primary-80: #764ba2;
+  --amplify-colors-brand-primary-90: #5a67d8;
+  --amplify-colors-brand-primary-100: #4c51bf;
+}
+
+.amplify-authenticator {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.amplify-card {
+  background: white;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.amplify-tabs {
+  background: transparent;
+  margin-bottom: 1.5rem;
+}
+
+.amplify-tabs-item {
+  color: #4a5568;
+  font-weight: 600;
+  border-bottom: 3px solid transparent;
+  padding: 1rem 1.5rem;
+  transition: all 0.3s ease;
+  background: transparent;
+}
+
+.amplify-tabs-item[data-state="active"] {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.amplify-tabs-item:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.amplify-field-group {
+  margin-bottom: 1.5rem;
+}
+
+.amplify-field-group__field-wrapper {
+  margin-bottom: 0;
+}
+
+.amplify-label {
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.amplify-input,
+.amplify-select {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: #f7fafc;
+}
+
+.amplify-input:focus,
+.amplify-select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: white;
+  outline: none;
+}
+
+.amplify-button--primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  padding: 0.875rem 2rem;
+  font-weight: 600;
+  text-transform: none;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.amplify-button--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.amplify-button--primary:active {
+  transform: translateY(0);
+}
+
+.amplify-button--link {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.amplify-button--link:hover {
+  color: #5a67d8;
+  text-decoration: underline;
+}
+
+.amplify-field-group__error-message {
+  color: #e53e3e;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.amplify-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (max-width: 768px) {
   .App {
     padding: 10px;
@@ -398,6 +620,20 @@ body {
     display: block;
     margin-bottom: 0.5rem;
   }
+  
+  .header-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .auth-modal {
+    max-width: 95%;
+    margin: 1rem;
+  }
+  
+  .auth-container {
+    padding: 1.5rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -414,69 +650,8 @@ body {
     flex-direction: column;
     align-items: flex-start;
   }
-}
-/* Add to the end of your existing App.css */
-
-/* Authentication Modal Styles */
-.auth-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000;
-}
-
-.auth-modal {
-  position: relative;
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  max-width: 400px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.close-auth {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  z-index: 10;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.auth-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.auth-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-@media (max-width: 768px) {
-  .header-actions {
-    flex-direction: column;
-    gap: 0.5rem;
+  
+  .auth-container {
+    padding: 1rem;
   }
 }
