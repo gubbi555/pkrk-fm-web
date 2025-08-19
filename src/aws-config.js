@@ -1,21 +1,17 @@
 import { Amplify } from 'aws-amplify';
 
 const awsconfig = {
-  Auth: {
-    Cognito: {
-      region: 'ap-south-1',
-      userPoolId: 'ap-south-1_x76asAEFZ',
-      userPoolClientId: '631msbrfpevca0h86hvoemim1j',
-      signUpVerificationMethod: 'code',
-      loginWith: {
-        email: true,
-        username: true
-      }
-    }
-  }
+  aws_project_region: 'ap-south-1',
+  aws_cognito_region: 'ap-south-1',
+  aws_user_pools_id: 'ap-south-1_x76asAEFZ',
+  aws_user_pools_web_client_id: '631msbrfpevca0h86hvoemim1j',
+  aws_cognito_username_attributes: ['EMAIL'],
+  aws_cognito_social_providers: [],
+  aws_cognito_signup_attributes: ['EMAIL'],
+  aws_cognito_mfa_configuration: 'OFF',
+  aws_cognito_verification_mechanisms: ['EMAIL']
 };
 
-// Configure Amplify
 Amplify.configure(awsconfig);
 
 export default awsconfig;
