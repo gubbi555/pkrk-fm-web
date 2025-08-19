@@ -1,8 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './aws-config'; // Import configuration FIRST
 import './index.css';
 import App from './App';
-import './aws-config'; // Import Amplify configuration
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

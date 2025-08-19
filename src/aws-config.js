@@ -4,8 +4,8 @@ const awsconfig = {
   Auth: {
     Cognito: {
       region: 'ap-south-1',
-      userPoolId: 'ap-south-1_x76asAEFZ', // ✅ Fixed: removed backslash
-      userPoolClientId: '631msbrfpevca0h86hvoemim1j', // ✅ Correct
+      userPoolId: 'ap-south-1_x76asAEFZ',
+      userPoolClientId: '631msbrfpevca0h86hvoemim1j',
       signUpVerificationMethod: 'code',
       loginWith: {
         email: true,
@@ -15,6 +15,7 @@ const awsconfig = {
   }
 };
 
+// Configure Amplify
 Amplify.configure(awsconfig);
 
 export default awsconfig;

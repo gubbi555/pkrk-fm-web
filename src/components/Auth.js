@@ -12,6 +12,10 @@ const Auth = ({ children }) => {
     },
     signUp: {
       username: {
+        label: 'Username',
+        placeholder: 'Enter your username',
+      },
+      email: {
         label: 'Email',
         placeholder: 'Enter your email address',
       },
@@ -32,7 +36,7 @@ const Auth = ({ children }) => {
         <div className="authenticated-app">
           <div className="auth-header">
             <div className="user-info">
-              <span>Welcome, {user.attributes.name || user.attributes.email || user.username}!</span>
+              <span>Welcome, {user?.attributes?.email || user?.username}!</span>
               <button onClick={signOut} className="sign-out-btn">
                 Sign Out
               </button>
