@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import AudioPlayer from './AudioPlayer';
 
+// Import all background images
+import monssonragaImg from '../assets/images/monssonraga.jfif';
+import paramathmaImg from '../assets/images/paramathma.jfif';
+import rajImg from '../assets/images/raj.jfif';
+import educationalImg from '../assets/images/educational.jfif';
+import horrorImg from '../assets/images/horror.jpg';
+import storiesImg from '../assets/images/stories.jfif';
+
 const ContentBrowser = () => {
   const [content, setContent] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -54,7 +62,7 @@ const ContentBrowser = () => {
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
     fetchContent(category);
-    setCurrentTrack(null); // Stop current playback when changing category
+    setCurrentTrack(null);
   };
 
   const playTrack = (track) => {
@@ -161,31 +169,64 @@ const ContentBrowser = () => {
 };
 
 const ContentItem = ({ item, onPlay }) => {
+  // Function to get background image based on content
+  const getBackgroundImage = () => {
+    // For music: use album/artist name
+    if (item.category === 'music') {
+      switch (item.album?.toLowerCase()) {
+        case 'monssonraga': return monssonragaImg;
+        case 'paramathma': return paramathmaImg;
+        case 'raj': return rajImg;
+        default: return null;
+      }
+    }
+    
+    // For other categories
+    switch (item.category) {
+      case 'educational': return educationalImg;
+      case 'stories':
+        return item.subcategory === 'horror' ? horrorImg : storiesImg;
+      default: return null;
+    }
+  };
+
+  const backgroundImage = getBackgroundImage();
+
   return (
-    <div className="content-item">
-      <div className="item-info">
-        <h3>{item.title}</h3>
-        <p className="description">{item.description}</p>
-        <div className="item-meta">
-          <span className="duration">⏱️ {item.duration}</span>
-          <span className="language">🗣️ {item.language}</span>
-          {item.artist && <span className="artist">🎤 {item.artist}</span>}
-          {item.season && (
-            <span className="season-episode">
-              📺 S{item.season}E{item.episode}
-            </span>
-          )}
-          {item.subcategory && (
-            <span className="subcategory">🏷️ {item.subcategory}</span>
-          )}
+    <div 
+      className="content-item"
+      style={{
+        backgroundImage: backgroundImage ? `url(${backgroundImage})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      <div className="item-overlay">
+        <div className="item-info">
+          <h3>{item.title}</h3>
+          <p className="description">{item.description}</p>
+          <div className="item-meta">
+            <span className="duration">⏱️ {item.duration}</span>
+            <span className="language">🗣️ {item.language}</span>
+            {item.artist && <span className="artist">🎤 {item.artist}</span>}
+            {item.season && (
+              <span className="season-episode">
+                📺 S{item.season}E{item.episode}
+              </span>
+            )}
+            {item.subcategory && (
+              <span className="subcategory">🏷️ {item.subcategory}</span>
+            )}
+          </div>
         </div>
+        <button 
+          onClick={() => onPlay(item)}
+          className="play-button"
+        >
+          ▶️ Play Now
+        </button>
       </div>
-      <button 
-        onClick={() => onPlay(item)}
-        className="play-button"
-      >
-        ▶️ Play Now
-      </button>
     </div>
   );
 };
