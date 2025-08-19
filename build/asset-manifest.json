@@ -1,0 +1,19 @@
+{
+  "files": {
+    "main.css": "/static/css/main.46e880b6.css",
+    "main.js": "/static/js/main.ef3191f6.js",
+    "static/media/educational.jfif": "/static/media/educational.fb6d0e8cf50ef3ee3df5.jfif",
+    "static/media/horror.jpg": "/static/media/horror.225cb1e5496c0e1eb68a.jpg",
+    "static/media/raj.jfif": "/static/media/raj.f609d7d1b468f613ce5f.jfif",
+    "static/media/monssonraga.jfif": "/static/media/monssonraga.9cee677958d790f521d3.jfif",
+    "static/media/paramathma.jfif": "/static/media/paramathma.279c3e62175c24535909.jfif",
+    "static/media/stories.jfif": "/static/media/stories.43248ecaf6a7e703b0c8.jfif",
+    "index.html": "/index.html",
+    "main.46e880b6.css.map": "/static/css/main.46e880b6.css.map",
+    "main.ef3191f6.js.map": "/static/js/main.ef3191f6.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.46e880b6.css",
+    "static/js/main.ef3191f6.js"
+  ]
+}

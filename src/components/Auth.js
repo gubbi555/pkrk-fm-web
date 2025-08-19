@@ -1,6 +1,10 @@
 import React from 'react';
 import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
+import { Auth } from 'aws-amplify';
+// Or for newer versions:
+import { getCurrentUser } from 'aws-amplify/auth/cognito';
+
 
 const Auth = ({ children }) => {
   const formFields = {
