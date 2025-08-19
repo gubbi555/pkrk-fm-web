@@ -1,15 +1,13 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { Amplify } from 'aws-amplify';
-import awsconfig from './aws-config';
-import App from './App';
+import ContentBrowser from './components/ContentBrowser';
+import './App.css';
 
-// ✅ Configure Amplify BEFORE rendering the app
-Amplify.configure(awsconfig);
+function App() {
+  return (
+    <div className="App">
+      <ContentBrowser />
+    </div>
+  );
+}
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+export default App;
