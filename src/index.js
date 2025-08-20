@@ -1,3 +1,4 @@
+import './aws-config'; // <-- This line must come BEFORE any Auth usage
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
