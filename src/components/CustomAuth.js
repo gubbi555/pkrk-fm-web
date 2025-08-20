@@ -35,23 +35,12 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
     setError('');
     
     try {
-      // Enhanced logging for debugging
       console.log('🔧 DEBUG: Starting SignUp Process');
-      console.log('🔧 Current Amplify Config Check');
-      console.log('📝 Form Data (Safe):', {
-        email: formData.email,
-        emailValid: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email),
-        phone: formData.phone,
-        phoneValid: /^[6-9]\d{9}$/.test(formData.phone),
-        passwordLength: formData.password.length,
-        confirmPasswordMatch: formData.password === formData.confirmPassword,
-        loginMethod: loginMethod
-      });
-
+      
       let signUpConfig;
       
       if (loginMethod === 'email') {
-        // Email validation
+        // Email signup validation
         if (!formData.email || !formData.password) {
           throw new Error('Email and password are required');
         }
@@ -68,7 +57,7 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
           }
         };
       } else {
-        // Phone validation
+        // Phone signup validation
         if (!formData.phone || !formData.password) {
           throw new Error('Phone number and password are required');
         }
@@ -77,12 +66,22 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
           throw new Error('Please enter a valid 10-digit mobile number');
         }
         
+        // EMAIL IS REQUIRED FOR PHONE SIGNUP (Cognito requirement)
+        if (!formData.email) {
+          throw new Error('Email is also required for phone signup');
+        }
+        
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          throw new Error('Please enter a valid email address');
+        }
+        
         const phoneNumber = formatPhoneNumber(formData.phone);
         signUpConfig = {
           username: phoneNumber,
           password: formData.password,
           attributes: {
-            phone_number: phoneNumber
+            phone_number: phoneNumber,
+            email: formData.email  // Both phone AND email required
           }
         };
       }
@@ -92,74 +91,23 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
         throw new Error('Passwords do not match');
       }
       
-      // Password strength check (basic)
+      // Password strength check
       if (formData.password.length < 8) {
         throw new Error('Password must be at least 8 characters long');
       }
       
-      console.log('🚀 SignUp Config:', {
-        username: signUpConfig.username,
-        attributesKeys: Object.keys(signUpConfig.attributes),
-        passwordLength: signUpConfig.password.length
-      });
+      console.log('🚀 SignUp Config:', signUpConfig);
       
-      console.log('📡 Calling Auth.signUp...');
       const result = await Auth.signUp(signUpConfig);
-      
-      console.log('✅ SignUp SUCCESS:', {
-        userSub: result.userSub,
-        codeDeliveryDetails: result.codeDeliveryDetails
-      });
+      console.log('✅ SignUp SUCCESS:', result);
       
       setShowVerification(true);
       setError('');
       
     } catch (err) {
-      // Comprehensive error logging
-      console.error('❌ SignUp ERROR - Complete Details:');
-      console.error('Error Name:', err.name);
-      console.error('Error Code:', err.code);
-      console.error('Error Message:', err.message);
-      console.error('Full Error Object:', err);
-      console.error('Error Stack:', err.stack);
-      
-      // More specific error handling based on error codes
-      let errorMessage = 'Account creation failed. ';
-      
-      switch (err.code) {
-        case 'InvalidPasswordException':
-          errorMessage = `Password requirements not met: ${err.message}`;
-          break;
-        case 'UsernameExistsException':
-          errorMessage = `This ${loginMethod} is already registered. Try signing in instead.`;
-          break;
-        case 'InvalidParameterException':
-          errorMessage = `Invalid input: ${err.message}`;
-          break;
-        case 'NotAuthorizedException':
-          errorMessage = 'Not authorized. Please check your configuration.';
-          break;
-        case 'LimitExceededException':
-          errorMessage = 'Too many attempts. Please try again later.';
-          break;
-        case 'TooManyRequestsException':
-          errorMessage = 'Too many requests. Please wait and try again.';
-          break;
-        case 'UserLambdaValidationException':
-          errorMessage = 'Validation failed. Please check your input.';
-          break;
-        default:
-          errorMessage = err.message || `Unknown error occurred (${err.code})`;
-      }
-      
+      console.error('❌ SignUp ERROR:', err);
+      let errorMessage = err.message || 'Account creation failed. Please try again.';
       setError(errorMessage);
-      
-      // Additional debugging info
-      console.error('🔍 Debug Info:');
-      console.error('- User Pool ID configured?', process.env.REACT_APP_USER_POOL_ID || 'Check aws-config.js');
-      console.error('- Client ID configured?', process.env.REACT_APP_USER_POOL_CLIENT_ID || 'Check aws-config.js');
-      console.error('- Network connection?', navigator.onLine ? 'Online' : 'Offline');
-      
     } finally {
       setLoading(false);
     }
@@ -170,29 +118,15 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
     setError('');
     
     try {
-      console.log('🔧 Starting SignIn Process');
-      
       const username = loginMethod === 'email' 
         ? formData.email 
         : formatPhoneNumber(formData.phone);
-      
-      console.log('📡 Attempting SignIn with username:', username);
         
       const user = await Auth.signIn(username, formData.password);
-      
-      console.log('✅ SignIn SUCCESS:', {
-        username: user.username,
-        attributes: user.attributes
-      });
-      
       onAuthSuccess(user);
       
     } catch (err) {
-      console.error('❌ SignIn ERROR:', {
-        code: err.code,
-        message: err.message,
-        name: err.name
-      });
+      console.error('❌ SignIn ERROR:', err);
       
       let errorMessage = 'Sign in failed. ';
       
@@ -205,9 +139,6 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
           break;
         case 'UserNotFoundException':
           errorMessage = `No account found with this ${loginMethod}.`;
-          break;
-        case 'InvalidParameterException':
-          errorMessage = 'Invalid login credentials format.';
           break;
         default:
           errorMessage = err.message || 'Sign in failed. Please try again.';
@@ -227,23 +158,15 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
       const username = loginMethod === 'email' 
         ? formData.email 
         : formatPhoneNumber(formData.phone);
-      
-      console.log('📡 Confirming SignUp for:', username);
         
       await Auth.confirmSignUp(username, formData.verificationCode);
-      console.log('✅ Email/SMS Verification SUCCESS');
       
       // Auto sign in after confirmation
       const user = await Auth.signIn(username, formData.password);
-      console.log('✅ Auto SignIn SUCCESS');
-      
       onAuthSuccess(user);
       
     } catch (err) {
-      console.error('❌ Verification ERROR:', {
-        code: err.code,
-        message: err.message
-      });
+      console.error('❌ Verification ERROR:', err);
       
       let errorMessage = 'Verification failed. ';
       
@@ -253,9 +176,6 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
           break;
         case 'ExpiredCodeException':
           errorMessage = 'Verification code expired. Please request a new one.';
-          break;
-        case 'LimitExceededException':
-          errorMessage = 'Too many attempts. Please try again later.';
           break;
         default:
           errorMessage = err.message || 'Verification failed. Please check your code.';
@@ -361,17 +281,28 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
               className="auth-input"
             />
           ) : (
-            <div className="phone-input-container">
-              <select className="country-code" disabled>
-                <option value="+91">🇮🇳 +91</option>
-              </select>
+            // For phone signup, show BOTH phone and email fields
+            <div>
+              <div className="phone-input-container" style={{marginBottom: '1rem'}}>
+                <select className="country-code" disabled>
+                  <option value="+91">🇮🇳 +91</option>
+                </select>
+                <input
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  className="auth-input phone-input"
+                  maxLength="10"
+                />
+              </div>
+              {/* EMAIL FIELD FOR PHONE SIGNUP - REQUIRED */}
               <input
-                type="tel"
-                placeholder="10-digit mobile number"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                className="auth-input phone-input"
-                maxLength="10"
+                type="email"
+                placeholder="Enter email address (required)"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value.toLowerCase().trim())}
+                className="auth-input"
               />
             </div>
           )}

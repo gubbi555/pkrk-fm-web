@@ -330,3 +330,72 @@
     font-size: 1.1rem;
   }
 }
+
+/* Add to existing CustomAuth.css */
+
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input {
+  padding-right: 3rem !important;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease;
+  z-index: 1;
+}
+
+.password-toggle-btn:hover {
+  color: #667eea;
+}
+
+.phone-input-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.country-code {
+  background: #3a3a3a;
+  border: 1px solid #555;
+  color: #fff;
+  padding: 0.75rem;
+  border-radius: 8px;
+  min-width: 80px;
+  cursor: not-allowed;
+}
+
+.phone-input {
+  flex: 1;
+}
+
+.resend-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: transparent;
+  border: 1px solid #555;
+  border-radius: 8px;
+  color: #667eea;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: all 0.3s ease;
+}
+
+.resend-btn:hover {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: #667eea;
+}
