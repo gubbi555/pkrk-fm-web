@@ -3,12 +3,11 @@ import { Auth } from 'aws-amplify';
 import './CustomAuth.css';
 
 const CustomAuth = ({ onAuthSuccess, onClose }) => {
-  const [mode, setMode] = useState('signin'); // 'signin' or 'signup'
+  const [mode, setMode] = useState('signin'); // 'signin' or 'signup'  
   const [loginMethod, setLoginMethod] = useState('email'); // 'email' or 'phone'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Form states
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -18,7 +17,6 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
   });
   
   const [showVerification, setShowVerification] = useState(false);
-  const [tempUser, setTempUser] = useState(null);
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
@@ -30,17 +28,12 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
     setError('');
     
     try {
+      // Use email or phone based on user selection
       const username = loginMethod === 'email' ? formData.email : formData.phone;
       const user = await Auth.signIn(username, formData.password);
-      
-      if (user.challengeName === 'SMS_MFA' || user.challengeName === 'SOFTWARE_TOKEN_MFA') {
-        setShowVerification(true);
-        setTempUser(user);
-      } else {
-        onAuthSuccess(user);
-      }
+      onAuthSuccess(user);
     } catch (err) {
-      setError(err.message || 'Sign in failed');
+      setError(err.message || 'Sign in failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }
@@ -56,21 +49,32 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
       return;
     }
     
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all required fields');
+      setLoading(false);
+      return;
+    }
+    
     try {
       const signUpConfig = {
-        username: formData.email, // Use email as username
+        username: formData.email,
         password: formData.password,
         attributes: {
-          email: formData.email,
-          phone_number: formData.phone.startsWith('+') ? formData.phone : `+91${formData.phone}`
+          email: formData.email
         }
       };
       
+      // Add phone if provided
+      if (formData.phone) {
+        signUpConfig.attributes.phone_number = formData.phone.startsWith('+91') 
+          ? formData.phone 
+          : `+91${formData.phone}`;
+      }
+      
       const result = await Auth.signUp(signUpConfig);
-      setTempUser(result.user);
       setShowVerification(true);
     } catch (err) {
-      setError(err.message || 'Sign up failed');
+      setError(err.message || 'Sign up failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -81,27 +85,14 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
     setError('');
     
     try {
-      if (mode === 'signup') {
-        await Auth.confirmSignUp(formData.email, formData.verificationCode);
-        // Auto sign in after confirmation
-        const user = await Auth.signIn(formData.email, formData.password);
-        onAuthSuccess(user);
-      } else {
-        const user = await Auth.confirmSignIn(tempUser, formData.verificationCode);
-        onAuthSuccess(user);
-      }
+      await Auth.confirmSignUp(formData.email, formData.verificationCode);
+      // Auto sign in after confirmation
+      const user = await Auth.signIn(formData.email, formData.password);
+      onAuthSuccess(user);
     } catch (err) {
       setError(err.message || 'Verification failed');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    try {
-      await Auth.federatedSignIn({ provider: 'Google' });
-    } catch (err) {
-      setError('Google sign-in failed');
     }
   };
 
@@ -115,7 +106,7 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
             <h2>Verify Your Account</h2>
             <p className="security-text">
               <span className="security-icon">🔒</span>
-              Your information is safe with us
+              Check your email for verification code
             </p>
           </div>
 
@@ -136,7 +127,7 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
             onClick={handleVerification}
             disabled={loading || !formData.verificationCode}
           >
-            {loading ? 'Verifying...' : 'Verify'}
+            {loading ? 'Verifying...' : 'Verify & Continue'}
           </button>
         </div>
       </div>
@@ -185,15 +176,32 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
           )}
         </div>
 
-        {(loginMethod === 'phone' || mode === 'signup') && (
+        {(loginMethod === 'phone' && mode === 'signin') && (
           <div className="form-group phone-group">
             <div className="phone-input-container">
-              <select className="country-code">
+              <select className="country-code" disabled>
                 <option value="+91">🇮🇳 +91</option>
               </select>
               <input
                 type="tel"
                 placeholder="Enter phone number"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                className="auth-input phone-input"
+              />
+            </div>
+          </div>
+        )}
+
+        {mode === 'signup' && (
+          <div className="form-group phone-group">
+            <div className="phone-input-container">
+              <select className="country-code" disabled>
+                <option value="+91">🇮🇳 +91</option>
+              </select>
+              <input
+                type="tel"
+                placeholder="Enter phone number (optional)"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 className="auth-input phone-input"
@@ -238,7 +246,7 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
           <span>OR</span>
         </div>
 
-        <button className="google-btn" onClick={handleGoogleSignIn}>
+        <button className="google-btn" onClick={() => setError('Google sign-in coming soon!')}>
           <span className="google-icon">🅶</span>
           Continue via Google
         </button>

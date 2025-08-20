@@ -105,16 +105,16 @@ const ContentBrowser = () => {
 
   // Custom Auth Modal
   if (showAuth) {
-    return (
-      <CustomAuth
-        onAuthSuccess={(user) => {
-          setUser(user);
-          setShowAuth(false);
-        }}
-        onClose={() => setShowAuth(false)}
-      />
-    );
-  }
+  return (
+    <CustomAuth
+      onAuthSuccess={(user) => {
+        setUser(user);
+        setShowAuth(false);
+      }}
+      onClose={() => setShowAuth(false)}
+    />
+  );
+}
 
   return (
     <div className="content-browser">
