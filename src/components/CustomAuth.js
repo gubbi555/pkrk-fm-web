@@ -4,11 +4,10 @@ import './CustomAuth.css';
 
 const CustomAuth = ({ onAuthSuccess, onClose }) => {
   const [mode, setMode] = useState('signin');
-  const [loginMethod, setLoginMethod] = useState('email');
+  const [loginMethod, setLoginMethod] = useState('email'); // For both signin and signup
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Password visibility states
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -29,21 +28,26 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
 
   const formatPhoneNumber = (phone) => {
     const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length === 10) {
-      return `+91${cleaned}`;
-    }
-    return `+91${cleaned}`;
+    return cleaned.length === 10 ? `+91${cleaned}` : `+91${cleaned}`;
   };
 
   const handleSignUp = async () => {
     setLoading(true);
     setError('');
     
-    // Basic validation
-    if (!formData.email || !formData.password) {
-      setError('Email and password are required');
-      setLoading(false);
-      return;
+    // Validation based on selected method
+    if (loginMethod === 'email') {
+      if (!formData.email || !formData.password) {
+        setError('Email and password are required');
+        setLoading(false);
+        return;
+      }
+    } else {
+      if (!formData.phone || !formData.password) {
+        setError('Phone number and password are required');
+        setLoading(false);
+        return;
+      }
     }
     
     if (formData.password !== formData.confirmPassword) {
@@ -59,18 +63,32 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
     }
     
     try {
-      // Simple signup with just email and password
-      const signUpConfig = {
-        username: formData.email,
-        password: formData.password,
-        attributes: {
-          email: formData.email
-        }
-      };
+      let signUpConfig;
       
-      console.log('Attempting signup with:', { 
-        username: signUpConfig.username,
-        attributes: signUpConfig.attributes 
+      if (loginMethod === 'email') {
+        // Email signup
+        signUpConfig = {
+          username: formData.email,
+          password: formData.password,
+          attributes: {
+            email: formData.email
+          }
+        };
+      } else {
+        // Phone signup  
+        const phoneNumber = formatPhoneNumber(formData.phone);
+        signUpConfig = {
+          username: phoneNumber,
+          password: formData.password,
+          attributes: {
+            phone_number: phoneNumber
+          }
+        };
+      }
+      
+      console.log('Signup attempt:', { 
+        method: loginMethod,
+        username: signUpConfig.username 
       });
       
       const result = await Auth.signUp(signUpConfig);
@@ -79,20 +97,18 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
       setShowVerification(true);
       
     } catch (err) {
-      console.error('SignUp error details:', err);
+      console.error('SignUp error:', err);
       
       let errorMessage = 'Account creation failed. ';
       
       if (err.code === 'UsernameExistsException') {
-        errorMessage = 'An account with this email already exists. Try signing in instead.';
+        errorMessage = `An account with this ${loginMethod} already exists. Try signing in instead.`;
       } else if (err.code === 'InvalidPasswordException') {
-        errorMessage = 'Password must contain uppercase, lowercase, numbers and special characters.';
+        errorMessage = 'Password must be at least 6 characters with mixed case and numbers.';
       } else if (err.code === 'InvalidParameterException') {
-        errorMessage = 'Please enter a valid email address.';
+        errorMessage = `Please enter a valid ${loginMethod === 'email' ? 'email address' : 'phone number'}.`;
       } else if (err.message) {
         errorMessage = err.message;
-      } else {
-        errorMessage += 'Please check your internet connection and try again.';
       }
       
       setError(errorMessage);
@@ -116,11 +132,11 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
       let errorMessage = 'Sign in failed. ';
       
       if (err.code === 'UserNotConfirmedException') {
-        errorMessage = 'Please verify your email first. Check your inbox for verification code.';
+        errorMessage = 'Please verify your account first. Check your email/SMS for verification code.';
       } else if (err.code === 'NotAuthorizedException') {
-        errorMessage = 'Incorrect email or password. Please try again.';
+        errorMessage = `Incorrect ${loginMethod} or password. Please try again.`;
       } else if (err.code === 'UserNotFoundException') {
-        errorMessage = 'No account found with this email. Please sign up first.';
+        errorMessage = `No account found with this ${loginMethod}. Please sign up first.`;
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -136,10 +152,11 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
     setError('');
     
     try {
-      await Auth.confirmSignUp(formData.email, formData.verificationCode);
+      const username = loginMethod === 'email' ? formData.email : formatPhoneNumber(formData.phone);
+      await Auth.confirmSignUp(username, formData.verificationCode);
       
       // Auto sign in after confirmation
-      const user = await Auth.signIn(formData.email, formData.password);
+      const user = await Auth.signIn(username, formData.password);
       onAuthSuccess(user);
       
     } catch (err) {
@@ -172,7 +189,7 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
             <h2>Verify Your Account</h2>
             <p className="security-text">
               <span className="security-icon">🔒</span>
-              Check your email for verification code
+              Check your {loginMethod === 'email' ? 'email' : 'SMS'} for verification code
             </p>
           </div>
 
@@ -201,8 +218,9 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
             className="resend-btn"
             onClick={async () => {
               try {
-                await Auth.resendSignUp(formData.email);
-                setError('New verification code sent! Check your email.');
+                const username = loginMethod === 'email' ? formData.email : formatPhoneNumber(formData.phone);
+                await Auth.resendSignUp(username);
+                setError(`New verification code sent to your ${loginMethod}!`);
               } catch (err) {
                 setError('Failed to resend code. Please try again.');
               }
@@ -228,25 +246,24 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
           </p>
         </div>
 
-        {mode === 'signin' && (
-          <div className="login-method-toggle">
-            <button 
-              className={`method-btn ${loginMethod === 'email' ? 'active' : ''}`}
-              onClick={() => setLoginMethod('email')}
-            >
-              Email
-            </button>
-            <button 
-              className={`method-btn ${loginMethod === 'phone' ? 'active' : ''}`}
-              onClick={() => setLoginMethod('phone')}
-            >
-              Phone
-            </button>
-          </div>
-        )}
+        {/* Method toggle for BOTH signin and signup */}
+        <div className="login-method-toggle">
+          <button 
+            className={`method-btn ${loginMethod === 'email' ? 'active' : ''}`}
+            onClick={() => setLoginMethod('email')}
+          >
+            Email
+          </button>
+          <button 
+            className={`method-btn ${loginMethod === 'phone' ? 'active' : ''}`}
+            onClick={() => setLoginMethod('phone')}
+          >
+            Phone
+          </button>
+        </div>
 
         <div className="form-group">
-          {(loginMethod === 'email' || mode === 'signup') && (
+          {loginMethod === 'email' ? (
             <input
               type="email"
               placeholder="Enter email address"
@@ -254,11 +271,7 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
               onChange={(e) => handleInputChange('email', e.target.value.toLowerCase().trim())}
               className="auth-input"
             />
-          )}
-        </div>
-
-        {(loginMethod === 'phone' && mode === 'signin') && (
-          <div className="form-group phone-group">
+          ) : (
             <div className="phone-input-container">
               <select className="country-code" disabled>
                 <option value="+91">🇮🇳 +91</option>
@@ -272,26 +285,8 @@ const CustomAuth = ({ onAuthSuccess, onClose }) => {
                 maxLength="10"
               />
             </div>
-          </div>
-        )}
-
-        {mode === 'signup' && (
-          <div className="form-group phone-group">
-            <div className="phone-input-container">
-              <select className="country-code" disabled>
-                <option value="+91">🇮🇳 +91</option>
-              </select>
-              <input
-                type="tel"
-                placeholder="Mobile number (optional)"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                className="auth-input phone-input"
-                maxLength="10"
-              />
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="form-group">
           <div className="password-input-container">
