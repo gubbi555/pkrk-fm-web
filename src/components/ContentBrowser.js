@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Auth } from 'aws-amplify';
-import { Authenticator } from '@aws-amplify/ui-react';
 import AudioPlayer from './AudioPlayer';
+import CustomAuth from './CustomAuth'; // Import custom auth
 
 // Import background images
 import monssonragaImg from '../assets/images/monssonraga.jfif';
@@ -85,6 +85,16 @@ const ContentBrowser = () => {
     setCurrentTrack(track);
   };
 
+  const handleSignOut = async () => {
+    try {
+      await Auth.signOut();
+      setUser(null);
+      setCurrentTrack(null); // Clear current track on sign out
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   const groupedContent = content.reduce((acc, item) => {
     if (!acc[item.category]) {
       acc[item.category] = [];
@@ -93,25 +103,16 @@ const ContentBrowser = () => {
     return acc;
   }, {});
 
+  // Custom Auth Modal
   if (showAuth) {
     return (
-      <div className="auth-overlay">
-        <div className="auth-modal">
-          <button 
-            className="close-auth"
-            onClick={() => setShowAuth(false)}
-          >
-            ✕
-          </button>
-          <Authenticator>
-            {({ signOut, user }) => {
-              setUser(user);
-              setShowAuth(false);
-              return null;
-            }}
-          </Authenticator>
-        </div>
-      </div>
+      <CustomAuth
+        onAuthSuccess={(user) => {
+          setUser(user);
+          setShowAuth(false);
+        }}
+        onClose={() => setShowAuth(false)}
+      />
     );
   }
 
@@ -121,11 +122,16 @@ const ContentBrowser = () => {
         <h1>🎵 PKRK FM</h1>
         <p>Your Favorite Kannada Audio Streaming Platform</p>
         <div className="header-actions">
-          <span>{content.length} Audio Files Available</span>
+          <span className="stats">{content.length} Audio Files Available</span>
           {user ? (
-            <button onClick={() => { Auth.signOut(); setUser(null); }} className="auth-btn">
-              Sign Out ({user.attributes?.email})
-            </button>
+            <div className="user-info">
+              <span className="welcome-text">
+                Welcome, {user.attributes?.email || user.username}
+              </span>
+              <button onClick={handleSignOut} className="auth-btn">
+                Sign Out
+              </button>
+            </div>
           ) : (
             <button onClick={() => setShowAuth(true)} className="auth-btn">
               Sign In / Sign Up
@@ -147,6 +153,17 @@ const ContentBrowser = () => {
           ))}
         </select>
       </div>
+
+      {error && (
+        <div className="error-container">
+          <div className="error">
+            <p>⚠️ {error}</p>
+            <button onClick={() => window.location.reload()}>
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="loading">
@@ -201,6 +218,8 @@ const ContentBrowser = () => {
 };
 
 const ContentItem = ({ item, onPlay }) => {
+  const [imageError, setImageError] = useState(false);
+  
   const getBackgroundImage = () => {
     if (item.category === 'music') {
       switch (item.album?.toLowerCase()) {
@@ -225,25 +244,33 @@ const ContentItem = ({ item, onPlay }) => {
     <div 
       className="content-item"
       style={{
-        backgroundImage: `url(${backgroundImage})`,
+        backgroundImage: !imageError ? `url(${backgroundImage})` : 'linear-gradient(135deg, #667eea, #764ba2)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
       }}
     >
+      <img 
+        src={backgroundImage} 
+        alt=""
+        style={{ display: 'none' }}
+        onError={() => setImageError(true)}
+        onLoad={() => setImageError(false)}
+      />
       <div className="item-overlay">
         <div className="item-info">
           <h3>{item.title}</h3>
           <p className="description">{item.description}</p>
           <div className="item-meta">
-            <span className="duration">⏱️ {item.duration}</span>
-            <span className="language">🗣️ {item.language}</span>
+            <span className="duration">⏱️ {item.duration || 'Unknown'}</span>
+            <span className="language">🗣️ {item.language || 'Kannada'}</span>
             {item.artist && <span className="artist">🎤 {item.artist}</span>}
           </div>
         </div>
         <button 
           onClick={() => onPlay(item)}
           className="play-button"
+          disabled={!item.streamingUrl}
         >
           ▶️ Play Now
         </button>
