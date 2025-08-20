@@ -3,18 +3,14 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
-        - echo "✅ Dependencies installed successfully"
+        - npm install --legacy-peer-deps
     build:
       commands:
-        - echo "🏗️ Building PKRK FM Web App"
         - npm run build
-        - echo "✅ Build completed successfully"
   artifacts:
     baseDirectory: build
     files:
       - '**/*'
-  # Remove cache section temporarily
-  # cache:
-  #   paths:
-  #     - node_modules/**/*
+  cache:
+    paths:
+      - node_modules/**/*
