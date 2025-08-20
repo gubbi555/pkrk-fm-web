@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { Auth } from 'aws-amplify';
 import { Authenticator } from '@aws-amplify/ui-react';
 import { AudioPlayer } from './LazyComponents';
@@ -311,13 +311,11 @@ const EnhancedContentBrowser = () => {
             >
               ✕
             </button>
-            <Suspense fallback={<div>Loading player...</div>}>
-              <AudioPlayer
-                streamingUrl={currentTrack.streamingUrl}
-                title={currentTrack.title}
-                description={currentTrack.description}
-              />
-            </Suspense>
+            <AudioPlayer
+               streamingUrl={currentTrack.streamingUrl}
+               title={currentTrack.title}
+               description={currentTrack.description}
+             />
           </div>
         </div>
       )}

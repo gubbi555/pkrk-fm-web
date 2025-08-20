@@ -4,9 +4,12 @@ frontend:
     preBuild:
       commands:
         - npm ci
+        - echo "✅ Dependencies installed successfully"
     build:
       commands:
+        - echo "🏗️ Building PKRK FM Web App"
         - npm run build
+        - echo "✅ Build completed successfully"
   artifacts:
     baseDirectory: build
     files:
