@@ -1,23 +1,15 @@
-import React, { Suspense } from 'react';
-import ErrorBoundary from './components/ErrorBoundary';
-import EnhancedContentBrowser from './components/EnhancedContentBrowser';
-import '@aws-amplify/ui-react/styles.css';
+import React from 'react';
 import './App.css';
 
 function App() {
   return (
-    <ErrorBoundary>
-      <div className="App">
-        <Suspense fallback={
-          <div className="loading">
-            <div className="loading-spinner"></div>
-            <p>Loading PKRK FM...</p>
-          </div>
-        }>
-          <EnhancedContentBrowser />
-        </Suspense>
-      </div>
-    </ErrorBoundary>
+    <div className="App">
+      <header className="App-header">
+        <h1>🎵 PKRK FM</h1>
+        <p>Your Favorite Kannada Audio Streaming Platform</p>
+        <p>Coming Soon...</p>
+      </header>
+    </div>
   );
 }
 
