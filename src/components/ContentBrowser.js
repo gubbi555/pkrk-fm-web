@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { Auth } from 'aws-amplify';
-import { Authenticator } from '@aws-amplify/ui-react';
+import React, { useState, useEffect, useCallback } from 'react';
 import AudioPlayer from './AudioPlayer';
 
 // Import background images
@@ -21,7 +19,8 @@ const ContentBrowser = () => {
   const [user, setUser] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
 
-  const API_BASE_URL = 'https://1929mh4l2j.execute-api.ap-south-1.amazonaws.com/prod';
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 
+    'https://1929mh4l2j.execute-api.ap-south-1.amazonaws.com/prod';
 
   useEffect(() => {
     fetchCategories();
@@ -29,16 +28,14 @@ const ContentBrowser = () => {
     checkAuthStatus();
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const currentUser = await Auth.currentAuthenticatedUser();
-      setUser(currentUser);
-    } catch {
-      setUser(null);
+  const checkAuthStatus = useCallback(() => {
+    const savedUser = localStorage.getItem('pkrk-user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
     }
-  };
+  }, []);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/categories`);
       if (!response.ok) throw new Error('Failed to fetch categories');
@@ -48,9 +45,9 @@ const ContentBrowser = () => {
       console.error('Error fetching categories:', error);
       setError('Failed to load categories');
     }
-  };
+  }, [API_BASE_URL]);
 
-  const fetchContent = async (category) => {
+  const fetchContent = useCallback(async (category) => {
     try {
       setLoading(true);
       const url = category && category !== 'all' 
@@ -70,7 +67,7 @@ const ContentBrowser = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE_URL]);
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
@@ -83,6 +80,20 @@ const ContentBrowser = () => {
       return;
     }
     setCurrentTrack(track);
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('pkrk-user');
+    setUser(null);
+    setCurrentTrack(null);
+  };
+
+  const handleAuthSuccess = (email, password) => {
+    // Simple mock authentication
+    const userData = { email, name: email.split('@')[0] };
+    localStorage.setItem('pkrk-user', JSON.stringify(userData));
+    setUser(userData);
+    setShowAuth(false);
   };
 
   const groupedContent = content.reduce((acc, item) => {
@@ -104,17 +115,9 @@ const ContentBrowser = () => {
             ✕
           </button>
           <div className="auth-container">
-            <Authenticator
-              variation="modal"
-              hideSignUp={false}
-              signUpAttributes={['email']}
-            >
-              {({ signOut, user }) => {
-                setUser(user);
-                setShowAuth(false);
-                return null;
-              }}
-            </Authenticator>
+            <h2>🎵 Welcome to PKRK FM</h2>
+            <p>Sign in to access your favorite Kannada content</p>
+            <SimpleAuthForm onSuccess={handleAuthSuccess} />
           </div>
         </div>
       </div>
@@ -129,8 +132,8 @@ const ContentBrowser = () => {
         <div className="header-actions">
           <span>{content.length} Audio Files Available</span>
           {user ? (
-            <button onClick={() => { Auth.signOut(); setUser(null); }} className="auth-btn">
-              Sign Out ({user.attributes?.email})
+            <button onClick={handleSignOut} className="auth-btn">
+              Sign Out ({user.name})
             </button>
           ) : (
             <button onClick={() => setShowAuth(true)} className="auth-btn">
@@ -158,6 +161,16 @@ const ContentBrowser = () => {
         <div className="loading">
           <div className="loading-spinner"></div>
           <p>Loading your favorite content...</p>
+        </div>
+      ) : error ? (
+        <div className="error-container">
+          <div className="error">
+            <h3>⚠️ Something went wrong</h3>
+            <p>{error}</p>
+            <button onClick={() => window.location.reload()}>
+              🔄 Retry
+            </button>
+          </div>
         </div>
       ) : (
         <div className="content-grid">
@@ -206,6 +219,60 @@ const ContentBrowser = () => {
   );
 };
 
+// Simple Auth Form Component
+const SimpleAuthForm = ({ onSuccess }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSuccess(email, password);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="auth-form">
+      <div className="form-group">
+        <label>Email</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          required
+        />
+      </div>
+      
+      <div className="form-group">
+        <label>Password</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Enter your password"
+          required
+        />
+      </div>
+      
+      <button type="submit" className="auth-submit-btn">
+        {isSignUp ? 'Create Account' : 'Sign In'}
+      </button>
+      
+      <p className="auth-toggle">
+        {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+        <button
+          type="button"
+          onClick={() => setIsSignUp(!isSignUp)}
+          className="toggle-link"
+        >
+          {isSignUp ? 'Sign In' : 'Sign Up'}
+        </button>
+      </p>
+    </form>
+  );
+};
+
+// Content Item Component
 const ContentItem = ({ item, onPlay }) => {
   const getBackgroundImage = () => {
     if (item.category === 'music') {
