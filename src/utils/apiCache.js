@@ -1,14 +1,19 @@
 class APICache {
-  constructor() {
+  constructor(defaultTTL = 300000) { // 5 minutes default
     this.cache = new Map();
-    this.maxAge = 5 * 60 * 1000; // 5 minutes
+    this.defaultTTL = defaultTTL;
+  }
+
+  set(key, data, ttl = this.defaultTTL) {
+    const expiry = Date.now() + ttl;
+    this.cache.set(key, { data, expiry });
   }
 
   get(key) {
     const item = this.cache.get(key);
     if (!item) return null;
     
-    if (Date.now() - item.timestamp > this.maxAge) {
+    if (Date.now() > item.expiry) {
       this.cache.delete(key);
       return null;
     }
@@ -16,16 +21,13 @@ class APICache {
     return item.data;
   }
 
-  set(key, data) {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now()
-    });
-  }
-
   clear() {
     this.cache.clear();
   }
+
+  delete(key) {
+    this.cache.delete(key);
+  }
 }
 
-export const apiCache = new APICache();
+export default new APICache();

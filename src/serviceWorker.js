@@ -1,3 +1,6 @@
+// This optional code is used to register a service worker.
+// register() is not called by default.
+
 const isLocalhost = Boolean(
   window.location.hostname === 'localhost' ||
   window.location.hostname === '[::1]' ||
@@ -19,7 +22,7 @@ export function register(config) {
       if (isLocalhost) {
         checkValidServiceWorker(swUrl, config);
         navigator.serviceWorker.ready.then(() => {
-          console.log('This web app is being served cache-first by a service worker.');
+          console.log('PKRK FM is being served from cache by a service worker.');
         });
       } else {
         registerValidSW(swUrl, config);
@@ -32,6 +35,7 @@ function registerValidSW(swUrl, config) {
   navigator.serviceWorker
     .register(swUrl)
     .then(registration => {
+      console.log('PKRK FM service worker registered:', registration);
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
         if (installingWorker == null) {
@@ -40,7 +44,7 @@ function registerValidSW(swUrl, config) {
         installingWorker.onstatechange = () => {
           if (installingWorker.state === 'installed') {
             if (navigator.serviceWorker.controller) {
-              console.log('New content is available and will be used when all tabs for this page are closed.');
+              console.log('New content is available and will be used when all tabs are closed.');
               if (config && config.onUpdate) {
                 config.onUpdate(registration);
               }
@@ -79,7 +83,7 @@ function checkValidServiceWorker(swUrl, config) {
       }
     })
     .catch(() => {
-      console.log('No internet connection found. App is running in offline mode.');
+      console.log('No internet connection found. PKRK FM is running in offline mode.');
     });
 }
 

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Auth } from 'aws-amplify';
 import { Authenticator } from '@aws-amplify/ui-react';
-import { AudioPlayer } from './LazyComponents';
-import { apiCache } from '../utils/apiCache';
+import EnhancedAudioPlayer from './EnhancedAudioPlayer';
+import apiCache from '../utils/apiCache';
 
 // Import background images
 import monssonragaImg from '../assets/images/monssonraga.jfif';
@@ -17,12 +17,15 @@ const EnhancedContentBrowser = () => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [currentTrack, setCurrentTrack] = useState(null);
+  const [currentPlaylist, setCurrentPlaylist] = useState([]);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('title');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 
   const API_BASE_URL = 'https://1929mh4l2j.execute-api.ap-south-1.amazonaws.com/prod';
 
@@ -38,45 +41,48 @@ const EnhancedContentBrowser = () => {
     ]);
   };
 
-  const checkAuthStatus = useCallback(async () => {
+  const checkAuthStatus = async () => {
     try {
       const currentUser = await Auth.currentAuthenticatedUser();
       setUser(currentUser);
     } catch {
       setUser(null);
     }
-  }, []);
+  };
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = async () => {
     try {
-      const cacheKey = 'categories';
-      const cachedData = apiCache.get(cacheKey);
-      
-      if (cachedData) {
-        setCategories(['all', ...cachedData]);
+      // Check cache first
+      const cached = apiCache.get('categories');
+      if (cached) {
+        setCategories(['all', ...cached]);
         return;
       }
 
       const response = await fetch(`${API_BASE_URL}/categories`);
       if (!response.ok) throw new Error('Failed to fetch categories');
-      const data = await response.json();
       
-      apiCache.set(cacheKey, data.categories);
-      setCategories(['all', ...data.categories]);
+      const data = await response.json();
+      const categoryList = data.categories || [];
+      
+      // Cache for 10 minutes
+      apiCache.set('categories', categoryList, 600000);
+      setCategories(['all', ...categoryList]);
     } catch (error) {
       console.error('Error fetching categories:', error);
       setError('Failed to load categories');
     }
-  }, [API_BASE_URL]);
+  };
 
-  const fetchContent = useCallback(async (category) => {
+  const fetchContent = async (category = null) => {
     try {
       setLoading(true);
-      const cacheKey = category ? `content-${category}` : 'content-all';
-      const cachedData = apiCache.get(cacheKey);
+      const cacheKey = `content-${category || 'all'}`;
       
-      if (cachedData) {
-        setContent(cachedData);
+      // Check cache first
+      const cached = apiCache.get(cacheKey);
+      if (cached) {
+        setContent(cached);
         setLoading(false);
         return;
       }
@@ -89,10 +95,11 @@ const EnhancedContentBrowser = () => {
       if (!response.ok) throw new Error('Failed to fetch content');
       
       const data = await response.json();
-      const items = data.items || [];
+      const contentList = data.items || [];
       
-      apiCache.set(cacheKey, items);
-      setContent(items);
+      // Cache for 5 minutes
+      apiCache.set(cacheKey, contentList, 300000);
+      setContent(contentList);
       setError(null);
     } catch (error) {
       console.error('Error fetching content:', error);
@@ -101,51 +108,86 @@ const EnhancedContentBrowser = () => {
     } finally {
       setLoading(false);
     }
-  }, [API_BASE_URL]);
+  };
 
-  const handleCategoryChange = useCallback((category) => {
+  const handleCategoryChange = (category) => {
     setSelectedCategory(category);
     fetchContent(category);
-  }, [fetchContent]);
+  };
 
-  const playTrack = useCallback((track) => {
+  const playTrack = (track, playlist = null) => {
     if (!user) {
       setShowAuth(true);
       return;
     }
+    
+    const trackPlaylist = playlist || filteredContent;
+    const trackIndex = trackPlaylist.findIndex(item => item.contentId === track.contentId);
+    
     setCurrentTrack(track);
-  }, [user]);
+    setCurrentPlaylist(trackPlaylist);
+    setCurrentTrackIndex(trackIndex);
+  };
 
-  const filteredAndSortedContent = useMemo(() => {
-    let filtered = content.filter(item =>
-      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.artist && item.artist.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+  const playNext = () => {
+    if (currentTrackIndex < currentPlaylist.length - 1) {
+      const nextTrack = currentPlaylist[currentTrackIndex + 1];
+      setCurrentTrack(nextTrack);
+      setCurrentTrackIndex(currentTrackIndex + 1);
+    }
+  };
 
-    return filtered.sort((a, b) => {
+  const playPrevious = () => {
+    if (currentTrackIndex > 0) {
+      const prevTrack = currentPlaylist[currentTrackIndex - 1];
+      setCurrentTrack(prevTrack);
+      setCurrentTrackIndex(currentTrackIndex - 1);
+    }
+  };
+
+  // Enhanced filtering and searching
+  const filteredContent = useMemo(() => {
+    let filtered = content;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.title.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query) ||
+        item.artist?.toLowerCase().includes(query) ||
+        item.album?.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort content
+    filtered.sort((a, b) => {
       switch (sortBy) {
         case 'title':
           return a.title.localeCompare(b.title);
         case 'artist':
           return (a.artist || '').localeCompare(b.artist || '');
         case 'duration':
-          return (a.duration || '').localeCompare(b.duration || '');
+          return parseFloat(a.duration || 0) - parseFloat(b.duration || 0);
+        case 'category':
+          return a.category.localeCompare(b.category);
         default:
           return 0;
       }
     });
-  }, [content, searchTerm, sortBy]);
+
+    return filtered;
+  }, [content, searchQuery, sortBy]);
 
   const groupedContent = useMemo(() => {
-    return filteredAndSortedContent.reduce((acc, item) => {
+    return filteredContent.reduce((acc, item) => {
       if (!acc[item.category]) {
         acc[item.category] = [];
       }
       acc[item.category].push(item);
       return acc;
     }, {});
-  }, [filteredAndSortedContent]);
+  }, [filteredContent]);
 
   if (showAuth) {
     return (
@@ -157,52 +199,28 @@ const EnhancedContentBrowser = () => {
           >
             ✕
           </button>
-          <div className="auth-container">
-            <div className="auth-header">
-              <h2>🎵 Welcome to PKRK FM</h2>
-              <p>Sign in to access your favorite Kannada content</p>
-            </div>
-            <Authenticator
-              variation="modal"
-              hideSignUp={false}
-              signUpAttributes={['email']}
-            >
-              {({ signOut, user }) => {
-                setUser(user);
-                setShowAuth(false);
-                return null;
-              }}
-            </Authenticator>
-          </div>
+          <Authenticator>
+            {({ signOut, user }) => {
+              setUser(user);
+              setShowAuth(false);
+              return null;
+            }}
+          </Authenticator>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="content-browser">
+    <div className="enhanced-content-browser">
       <header className="app-header">
-        <div className="header-content">
-          <h1>🎵 PKRK FM</h1>
-          <p>Your Favorite Kannada Audio Streaming Platform</p>
-          <div className="header-stats">
-            <span className="stat-item">
-              📊 {content.length} Audio Files
-            </span>
-            <span className="stat-item">
-              📂 {categories.length - 1} Categories
-            </span>
-            {user && (
-              <span className="stat-item">
-                👤 Welcome, {user.attributes?.email?.split('@')[0]}
-              </span>
-            )}
-          </div>
-        </div>
+        <h1>🎵 PKRK FM</h1>
+        <p>Your Favorite Kannada Audio Streaming Platform</p>
         <div className="header-actions">
+          <span className="stats">{filteredContent.length} Audio Files Available</span>
           {user ? (
             <button onClick={() => { Auth.signOut(); setUser(null); }} className="auth-btn">
-              Sign Out
+              Sign Out ({user.attributes?.email})
             </button>
           ) : (
             <button onClick={() => setShowAuth(true)} className="auth-btn">
@@ -213,71 +231,72 @@ const EnhancedContentBrowser = () => {
       </header>
 
       <div className="controls-section">
-        <div className="search-filter">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="🔍 Search by title, artist, or description..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          
-          <div className="filter-controls">
-            <div className="category-filter">
-              <label>Category:</label>
-              <select 
-                value={selectedCategory} 
-                onChange={(e) => handleCategoryChange(e.target.value)}
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>
-                    {cat === 'all' ? 'All Content' : cat.charAt(0).toUpperCase() + cat.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="sort-filter">
-              <label>Sort by:</label>
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="title">Title</option>
-                <option value="artist">Artist</option>
-                <option value="duration">Duration</option>
-              </select>
-            </div>
-          </div>
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="🔍 Search tracks, artists, albums..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+          />
         </div>
-      </div>
 
-      {error && (
-        <div className="error-container">
-          <div className="error">
-            <h3>⚠️ Something went wrong</h3>
-            <p>{error}</p>
-            <button onClick={() => window.location.reload()}>
-              🔄 Retry
+        <div className="filter-controls">
+          <div className="category-filter">
+            <label>Category: </label>
+            <select 
+              value={selectedCategory} 
+              onChange={(e) => handleCategoryChange(e.target.value)}
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>
+                  {cat === 'all' ? 'All Content' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sort-filter">
+            <label>Sort by: </label>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="title">Title</option>
+              <option value="artist">Artist</option>
+              <option value="duration">Duration</option>
+              <option value="category">Category</option>
+            </select>
+          </div>
+
+          <div className="view-toggle">
+            <button 
+              className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              onClick={() => setViewMode('grid')}
+            >
+              ⊞
+            </button>
+            <button 
+              className={`view-btn ${viewMode === 'list' ? 'active' : ''}`}
+              onClick={() => setViewMode('list')}
+            >
+              ☰
             </button>
           </div>
         </div>
-      )}
+      </div>
 
       {loading ? (
         <div className="loading">
           <div className="loading-spinner"></div>
           <p>Loading your favorite content...</p>
         </div>
-      ) : filteredAndSortedContent.length === 0 ? (
-        <div className="no-content">
-          <h3>🔍 No content found</h3>
-          <p>Try adjusting your search or filter settings</p>
+      ) : error ? (
+        <div className="error-container">
+          <div className="error">
+            <p>⚠️ {error}</p>
+            <button onClick={() => window.location.reload()}>Retry</button>
+          </div>
         </div>
       ) : (
-        <div className="content-grid">
+        <div className={`content-grid ${viewMode}`}>
           {selectedCategory === 'all' ? (
             Object.entries(groupedContent).map(([category, items]) => (
               <div key={category} className="category-section">
@@ -287,15 +306,25 @@ const EnhancedContentBrowser = () => {
                 </h2>
                 <div className="content-items">
                   {items.map(item => (
-                    <ContentItem key={item.contentId} item={item} onPlay={playTrack} />
+                    <EnhancedContentItem 
+                      key={item.contentId} 
+                      item={item} 
+                      onPlay={(track) => playTrack(track, items)}
+                      viewMode={viewMode}
+                    />
                   ))}
                 </div>
               </div>
             ))
           ) : (
             <div className="content-items">
-              {filteredAndSortedContent.map(item => (
-                <ContentItem key={item.contentId} item={item} onPlay={playTrack} />
+              {filteredContent.map(item => (
+                <EnhancedContentItem 
+                  key={item.contentId} 
+                  item={item} 
+                  onPlay={(track) => playTrack(track, filteredContent)}
+                  viewMode={viewMode}
+                />
               ))}
             </div>
           )}
@@ -311,11 +340,14 @@ const EnhancedContentBrowser = () => {
             >
               ✕
             </button>
-            <AudioPlayer
-               streamingUrl={currentTrack.streamingUrl}
-               title={currentTrack.title}
-               description={currentTrack.description}
-             />
+            <EnhancedAudioPlayer
+              streamingUrl={currentTrack.streamingUrl}
+              title={currentTrack.title}
+              description={currentTrack.description}
+              onNext={currentTrackIndex < currentPlaylist.length - 1 ? playNext : null}
+              onPrevious={currentTrackIndex > 0 ? playPrevious : null}
+              playlist={currentPlaylist}
+            />
           </div>
         </div>
       )}
@@ -323,7 +355,7 @@ const EnhancedContentBrowser = () => {
   );
 };
 
-const ContentItem = React.memo(({ item, onPlay }) => {
+const EnhancedContentItem = ({ item, onPlay, viewMode }) => {
   const getBackgroundImage = () => {
     if (item.category === 'music') {
       switch (item.album?.toLowerCase()) {
@@ -346,7 +378,7 @@ const ContentItem = React.memo(({ item, onPlay }) => {
 
   return (
     <div 
-      className="content-item"
+      className={`content-item ${viewMode}`}
       style={{
         backgroundImage: `url(${backgroundImage})`,
         backgroundSize: 'cover',
@@ -362,7 +394,7 @@ const ContentItem = React.memo(({ item, onPlay }) => {
             <span className="duration">⏱️ {item.duration}</span>
             <span className="language">🗣️ {item.language}</span>
             {item.artist && <span className="artist">🎤 {item.artist}</span>}
-            <span className="category">📁 {item.category}</span>
+            {item.album && <span className="album">💿 {item.album}</span>}
           </div>
         </div>
         <button 
@@ -374,8 +406,6 @@ const ContentItem = React.memo(({ item, onPlay }) => {
       </div>
     </div>
   );
-});
-
-ContentItem.displayName = 'ContentItem';
+};
 
 export default EnhancedContentBrowser;

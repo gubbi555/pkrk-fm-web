@@ -1,10 +1,6 @@
 import React from 'react';
 import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
-import { Auth } from 'aws-amplify';
-// Or for newer versions:
-import { getCurrentUser } from 'aws-amplify/auth/cognito';
-
 
 const Auth = ({ children }) => {
   const formFields = {
@@ -21,7 +17,7 @@ const Auth = ({ children }) => {
       },
       email: {
         label: 'Email',
-        placeholder: 'Enter your email address',
+        placeholder: 'Enter your email',
       },
       password: {
         label: 'Password',
@@ -34,21 +30,29 @@ const Auth = ({ children }) => {
     },
   };
 
-  return (
-    <Authenticator formFields={formFields}>
-      {({ signOut, user }) => (
-        <div className="authenticated-app">
-          <div className="auth-header">
-            <div className="user-info">
-              <span>Welcome, {user?.attributes?.email || user?.username}!</span>
-              <button onClick={signOut} className="sign-out-btn">
-                Sign Out
-              </button>
-            </div>
-          </div>
-          {children}
+  const components = {
+    Header() {
+      return (
+        <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+          <h2 style={{ color: '#667eea', fontSize: '1.8rem', fontWeight: '800' }}>
+            🎵 Welcome to PKRK FM
+          </h2>
+          <p style={{ color: '#666', fontSize: '1rem' }}>
+            Your Gateway to Premium Kannada Audio Content
+          </p>
         </div>
-      )}
+      );
+    },
+  };
+
+  return (
+    <Authenticator
+      formFields={formFields}
+      components={components}
+      variation="modal"
+      hideSignUp={false}
+    >
+      {children}
     </Authenticator>
   );
 };

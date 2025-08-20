@@ -1,96 +1,119 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Hls from 'hls.js';
 
 const AudioPlayer = ({ streamingUrl, title, description }) => {
-  const audioRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const audioRef = useRef(null);
+  const hlsRef = useRef(null);
 
   useEffect(() => {
+    if (streamingUrl && audioRef.current) {
+      initializePlayer();
+    }
+    
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+      }
+    };
+  }, [streamingUrl]);
+
+  const initializePlayer = () => {
     const audio = audioRef.current;
-    if (!audio || !streamingUrl) return;
-
-    setLoading(true);
-
+    
     if (Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: false,
         lowLatencyMode: true,
-        backBufferLength: 90
+        backBufferLength: 90,
       });
       
+      hlsRef.current = hls;
       hls.loadSource(streamingUrl);
       hls.attachMedia(audio);
       
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log('HLS manifest loaded successfully');
         setLoading(false);
+        setError(null);
       });
-
+      
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('HLS error:', data);
+        setError('Failed to load audio stream');
         setLoading(false);
       });
-
-      return () => {
-        hls.destroy();
-      };
     } else if (audio.canPlayType('application/vnd.apple.mpegurl')) {
-      // Safari native HLS support
       audio.src = streamingUrl;
       setLoading(false);
     } else {
-      console.error('HLS not supported');
+      setError('HLS not supported in this browser');
       setLoading(false);
     }
-  }, [streamingUrl]);
+  };
 
-  const togglePlay = async () => {
+  const togglePlayPause = () => {
     const audio = audioRef.current;
-    if (!audio) return;
-
-    try {
-      if (isPlaying) {
-        audio.pause();
-        setIsPlaying(false);
-      } else {
-        await audio.play();
-        setIsPlaying(true);
-      }
-    } catch (error) {
-      console.error('Play error:', error);
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
     }
+    setIsPlaying(!isPlaying);
   };
 
   const handleTimeUpdate = () => {
     const audio = audioRef.current;
-    if (!audio) return;
     setCurrentTime(audio.currentTime);
   };
 
   const handleLoadedMetadata = () => {
     const audio = audioRef.current;
-    if (!audio) return;
     setDuration(audio.duration);
   };
 
   const handleSeek = (e) => {
     const audio = audioRef.current;
-    if (!audio) return;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const percent = (e.clientX - rect.left) / rect.width;
-    audio.currentTime = percent * duration;
+    const clickX = e.nativeEvent.offsetX;
+    const width = e.currentTarget.offsetWidth;
+    const newTime = (clickX / width) * duration;
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
   };
 
-  const formatTime = (time) => {
-    if (isNaN(time)) return '0:00';
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
+  const handleVolumeChange = (e) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    audioRef.current.volume = newVolume;
+  };
+
+  const formatTime = (timeInSeconds) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
+
+  if (loading) {
+    return (
+      <div className="audio-player loading">
+        <div className="loading-spinner"></div>
+        <p>Loading audio...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="audio-player error">
+        <p>Error: {error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="audio-player">
@@ -99,34 +122,51 @@ const AudioPlayer = ({ streamingUrl, title, description }) => {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={() => setIsPlaying(false)}
-        onPause={() => setIsPlaying(false)}
-        onPlay={() => setIsPlaying(true)}
+        preload="metadata"
       />
       
       <div className="player-info">
         <h3>{title}</h3>
-        {description && <p>{description}</p>}
+        <p>{description}</p>
       </div>
       
       <div className="player-controls">
         <button 
-          onClick={togglePlay} 
-          className="play-button"
+          className="play-pause-btn"
+          onClick={togglePlayPause}
           disabled={loading}
         >
-          {loading ? '⏳' : (isPlaying ? '⏸️' : '▶️')}
+          {isPlaying ? '⏸️' : '▶️'}
         </button>
         
-        <div className="progress-container">
-          <div className="progress-bar" onClick={handleSeek}>
+        <div className="time-info">
+          <span>{formatTime(currentTime)}</span>
+        </div>
+        
+        <div className="progress-container" onClick={handleSeek}>
+          <div className="progress-bar">
             <div 
               className="progress-fill"
-              style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-            />
+              style={{ width: `${(currentTime / duration) * 100}%` }}
+            ></div>
           </div>
-          <div className="time-info">
-            <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
-          </div>
+        </div>
+        
+        <div className="time-info">
+          <span>{formatTime(duration)}</span>
+        </div>
+        
+        <div className="volume-control">
+          <span>🔊</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value={volume}
+            onChange={handleVolumeChange}
+            className="volume-slider"
+          />
         </div>
       </div>
     </div>
