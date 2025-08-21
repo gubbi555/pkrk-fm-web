@@ -1,280 +1,235 @@
-import React, { useState, useEffect } from 'react';
-import { Auth } from 'aws-amplify';
-import AudioPlayer from './AudioPlayer';
-import CustomAuth from './CustomAuth'; // Import custom auth
-
-// Import background images
-import monssonragaImg from '../assets/images/monssonraga.jfif';
-import paramathmaImg from '../assets/images/paramathma.jfif';
-import rajImg from '../assets/images/raj.jfif';
-import educationalImg from '../assets/images/educational.jfif';
-import horrorImg from '../assets/images/horror.jpg';
-import storiesImg from '../assets/images/stories.jfif';
+import React, { useState, useEffect, useRef } from 'react';
+import Hls from 'hls.js';
 
 const ContentBrowser = () => {
-  const [content, setContent] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [currentTrack, setCurrentTrack] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [user, setUser] = useState(null);
-  const [showAuth, setShowAuth] = useState(false);
+  const [audioData, setAudioData] = useState([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const audioRef = useRef(null);
+  const hlsRef = useRef(null);
 
-  const API_BASE_URL = 'https://1929mh4l2j.execute-api.ap-south-1.amazonaws.com/prod';
+  // Use environment variables for Amplify
+  const CLOUDFRONT_URL = process.env.REACT_APP_CLOUDFRONT_URL;
+  const S3_METADATA_BUCKET = process.env.REACT_APP_S3_METADATA_BUCKET;
+  const S3_STATIC_ASSETS = process.env.REACT_APP_S3_STATIC_ASSETS;
+
+  // List of all your metadata files
+  const metadataFiles = [
+    'metadata/kannada/music/MonssonRaga/Hombisilina (PenduJatt.Com.Se).json',
+    'metadata/kannada/music/MonssonRaga/Muddada Moothi (PenduJatt.Com.Se).json',
+    'metadata/kannada/music/Paramathma/Hesaru Poorthi (PenduJatt.Com.Se).json',
+    'metadata/kannada/music/Paramathma/Thanmayaladenu (PenduJatt.Com.Se).json',
+    'metadata/kannada/music/Raj/Kuch Kuch Anthide (PenduJatt.Com.Se).json',
+    'metadata/kannada/music/Raj/Raja Heluvagella (PenduJatt.Com.Se).json',
+    'metadata/kannada/educational/Season1/Episode1.json',
+    'metadata/kannada/educational/Season1/Episode2.json',
+    'metadata/kannada/educational/Season2/Episode1.json',
+    'metadata/kannada/educational/Season2/Episode2.json',
+    'metadata/kannada/podcasts/Film/Season1/Episode1.json',
+    'metadata/kannada/podcasts/Film/Season1/Episode2.json',
+    'metadata/kannada/podcasts/Film/Season2/Episode1.json',
+    'metadata/kannada/podcasts/Film/Season2/Episode2.json',
+    'metadata/kannada/podcasts/Seriel/Season1/Episode1.json',
+    'metadata/kannada/podcasts/Seriel/Season1/Episode2.json',
+    'metadata/kannada/podcasts/Seriel/Season2/Episode1.json',
+    'metadata/kannada/podcasts/Seriel/Season2/Episode2.json',
+    'metadata/kannada/stories/Horror/Season1/Episode1.json',
+    'metadata/kannada/stories/Horror/Season1/Episode2.json',
+    'metadata/kannada/stories/Horror/Season2/Episode1.json',
+    'metadata/kannada/stories/Horror/Season2/Episode2.json',
+    'metadata/kannada/stories/Thriller/Season1/Episode1.json',
+    'metadata/kannada/stories/Thriller/Season1/Episode2.json',
+    'metadata/kannada/stories/Thriller/Season2/Episode1.json',
+    'metadata/kannada/stories/Thriller/Season2/Episode2.json',
+  ];
 
   useEffect(() => {
-    fetchCategories();
-    fetchContent();
-    checkAuthStatus();
+    const fetchAudioMetadata = async () => {
+      try {
+        console.log('🔄 Loading metadata from S3...');
+        const audioMetadata = [];
+        
+        for (const metadataFile of metadataFiles) {
+          try {
+            const metadataUrl = `${S3_METADATA_BUCKET}/${metadataFile}`;
+            const response = await fetch(metadataUrl);
+            
+            if (!response.ok) {
+              console.warn('⚠️ Failed to fetch:', metadataFile);
+              continue;
+            }
+            
+            const metadata = await response.json();
+            
+            // Convert file path to HLS CloudFront URL
+            const hlsPath = metadata.file_path
+              .replace('.mp3', '/index.m3u8')
+              .replace('audio/', '');
+            
+            const hlsUrl = `${CLOUDFRONT_URL}/${hlsPath}`;
+            
+            audioMetadata.push({
+              ...metadata,
+              hlsUrl: hlsUrl,
+              thumbnailUrl: `${S3_STATIC_ASSETS}/${metadata.thumbnail}`
+            });
+            
+          } catch (error) {
+            console.error('❌ Error fetching metadata:', metadataFile, error);
+          }
+        }
+        
+        setAudioData(audioMetadata);
+        console.log('✅ Loaded', audioMetadata.length, 'audio tracks');
+        
+      } catch (error) {
+        console.error('❌ Error loading audio metadata:', error);
+      }
+    };
+
+    fetchAudioMetadata();
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const currentUser = await Auth.currentAuthenticatedUser();
-      setUser(currentUser);
-    } catch {
-      setUser(null);
-    }
-  };
+  const handlePlayAudio = async (audio) => {
+    console.log('🎵 Playing:', audio.title);
+    console.log('🔗 HLS URL:', audio.hlsUrl);
 
-  const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/categories`);
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      const data = await response.json();
-      setCategories(['all', ...data.categories]);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      setError('Failed to load categories');
-    }
-  };
-
-  const fetchContent = async (category) => {
-    try {
-      setLoading(true);
-      const url = category && category !== 'all' 
-        ? `${API_BASE_URL}/content?category=${category}`
-        : `${API_BASE_URL}/content`;
+      setIsLoading(true);
       
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch content');
-      
-      const data = await response.json();
-      setContent(data.items || []);
-      setError(null);
+      // Stop current playback
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+
+      setCurrentAudio(audio);
+
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          debug: false,
+          enableWorker: false,
+        });
+        
+        hlsRef.current = hls;
+        
+        hls.on(Hls.Events.MANIFEST_PARSED, async () => {
+          console.log('✅ HLS ready');
+          try {
+            await audioRef.current.play();
+            setIsPlaying(true);
+            setIsLoading(false);
+            console.log('🎵 Playing successfully');
+          } catch (playError) {
+            console.error('❌ Play failed:', playError);
+            setIsLoading(false);
+          }
+        });
+        
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error('❌ HLS error:', data);
+          if (data.fatal) {
+            setIsLoading(false);
+            setIsPlaying(false);
+            alert('Playback failed: ' + data.details);
+          }
+        });
+        
+        hls.loadSource(audio.hlsUrl);
+        hls.attachMedia(audioRef.current);
+        
+      } else {
+        // Fallback for browsers without HLS.js support
+        audioRef.current.src = audio.hlsUrl;
+        await audioRef.current.play();
+        setIsPlaying(true);
+        setIsLoading(false);
+      }
+
     } catch (error) {
-      console.error('Error fetching content:', error);
-      setError('Failed to load content');
-      setContent([]);
-    } finally {
-      setLoading(false);
+      console.error('❌ Playback error:', error);
+      setIsLoading(false);
+      setIsPlaying(false);
+      alert('Failed to play: ' + error.message);
     }
   };
 
-  const handleCategoryChange = (category) => {
-    setSelectedCategory(category);
-    fetchContent(category);
-  };
-
-  const playTrack = (track) => {
-    if (!user) {
-      setShowAuth(true);
-      return;
-    }
-    setCurrentTrack(track);
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await Auth.signOut();
-      setUser(null);
-      setCurrentTrack(null); // Clear current track on sign out
-    } catch (error) {
-      console.error('Error signing out:', error);
+  const handlePause = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
     }
   };
-
-  const groupedContent = content.reduce((acc, item) => {
-    if (!acc[item.category]) {
-      acc[item.category] = [];
-    }
-    acc[item.category].push(item);
-    return acc;
-  }, {});
-
-  // Custom Auth Modal
-  if (showAuth) {
-  return (
-    <CustomAuth
-      onAuthSuccess={(user) => {
-        setUser(user);
-        setShowAuth(false);
-      }}
-      onClose={() => setShowAuth(false)}
-    />
-  );
-}
 
   return (
     <div className="content-browser">
-      <header className="app-header">
-        <h1>🎵 PKRK FM</h1>
-        <p>Your Favorite Kannada Audio Streaming Platform</p>
-        <div className="header-actions">
-          <span className="stats">{content.length} Audio Files Available</span>
-          {user ? (
-            <div className="user-info">
-              <span className="welcome-text">
-                Welcome, {user.attributes?.email || user.username}
-              </span>
-              <button onClick={handleSignOut} className="auth-btn">
-                Sign Out
+      <h1>🎵 PKRK FM</h1>
+      <h2>ಕನ್ನಡ ಆಡಿಯೋ ವಿಷಯ</h2>
+      
+      {audioData.length === 0 ? (
+        <div className="loading">🔄 Loading audio content...</div>
+      ) : (
+        <div className="audio-grid">
+          {audioData.map((audio) => (
+            <div key={audio.id} className="audio-card">
+              <img 
+                src={audio.thumbnailUrl} 
+                alt={audio.title}
+                className="audio-thumbnail"
+                onError={(e) => {
+                  e.target.src = '/path/to/default-thumbnail.jpg';
+                }}
+              />
+              <div className="audio-info">
+                <h3>{audio.title}</h3>
+                <p className="audio-meta">
+                  📂 {audio.category} • {audio.subcategory}
+                </p>
+                <p className="audio-duration">⏱️ {audio.duration}</p>
+                {audio.movie && (
+                  <p className="audio-movie">🎬 {audio.movie}</p>
+                )}
+              </div>
+              
+              <button 
+                onClick={() => {
+                  if (currentAudio?.id === audio.id && isPlaying) {
+                    handlePause();
+                  } else {
+                    handlePlayAudio(audio);
+                  }
+                }}
+                disabled={isLoading && currentAudio?.id === audio.id}
+                className="play-button"
+              >
+                {isLoading && currentAudio?.id === audio.id ? 
+                  '🔄 Loading...' : 
+                  (currentAudio?.id === audio.id && isPlaying) ? 
+                    '⏸️ Pause' : '▶️ Play Now'
+                }
               </button>
             </div>
-          ) : (
-            <button onClick={() => setShowAuth(true)} className="auth-btn">
-              Sign In / Sign Up
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div className="category-filter">
-        <label>Browse by Category: </label>
-        <select 
-          value={selectedCategory} 
-          onChange={(e) => handleCategoryChange(e.target.value)}
-        >
-          {categories.map(cat => (
-            <option key={cat} value={cat}>
-              {cat === 'all' ? 'All Content' : cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </option>
           ))}
-        </select>
-      </div>
-
-      {error && (
-        <div className="error-container">
-          <div className="error">
-            <p>⚠️ {error}</p>
-            <button onClick={() => window.location.reload()}>
-              Retry
-            </button>
-          </div>
         </div>
       )}
 
-      {loading ? (
-        <div className="loading">
-          <div className="loading-spinner"></div>
-          <p>Loading your favorite content...</p>
-        </div>
-      ) : (
-        <div className="content-grid">
-          {selectedCategory === 'all' ? (
-            Object.entries(groupedContent).map(([category, items]) => (
-              <div key={category} className="category-section">
-                <h2>
-                  {category.charAt(0).toUpperCase() + category.slice(1)} 
-                  <span className="count">({items.length})</span>
-                </h2>
-                <div className="content-items">
-                  {items.map(item => (
-                    <ContentItem key={item.contentId} item={item} onPlay={playTrack} />
-                  ))}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="content-items">
-              {content.map(item => (
-                <ContentItem key={item.contentId} item={item} onPlay={playTrack} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {currentTrack && user && (
-        <div className="current-player">
-          <div className="player-container">
-            <button 
-              className="close-player"
-              onClick={() => setCurrentTrack(null)}
-            >
-              ✕
-            </button>
-            <AudioPlayer
-              streamingUrl={currentTrack.streamingUrl}
-              title={currentTrack.title}
-              description={currentTrack.description}
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const ContentItem = ({ item, onPlay }) => {
-  const [imageError, setImageError] = useState(false);
-  
-  const getBackgroundImage = () => {
-    if (item.category === 'music') {
-      switch (item.album?.toLowerCase()) {
-        case 'monssonraga': return monssonragaImg;
-        case 'paramathma': return paramathmaImg;
-        case 'raj': return rajImg;
-        default: return educationalImg;
-      }
-    }
-    
-    switch (item.category) {
-      case 'educational': return educationalImg;
-      case 'stories':
-        return item.subcategory === 'horror' ? horrorImg : storiesImg;
-      default: return educationalImg;
-    }
-  };
-
-  const backgroundImage = getBackgroundImage();
-
-  return (
-    <div 
-      className="content-item"
-      style={{
-        backgroundImage: !imageError ? `url(${backgroundImage})` : 'linear-gradient(135deg, #667eea, #764ba2)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
-      <img 
-        src={backgroundImage} 
-        alt=""
+      <audio 
+        ref={audioRef}
         style={{ display: 'none' }}
-        onError={() => setImageError(true)}
-        onLoad={() => setImageError(false)}
+        onEnded={() => {
+          setIsPlaying(false);
+          setCurrentAudio(null);
+        }}
       />
-      <div className="item-overlay">
-        <div className="item-info">
-          <h3>{item.title}</h3>
-          <p className="description">{item.description}</p>
-          <div className="item-meta">
-            <span className="duration">⏱️ {item.duration || 'Unknown'}</span>
-            <span className="language">🗣️ {item.language || 'Kannada'}</span>
-            {item.artist && <span className="artist">🎤 {item.artist}</span>}
-          </div>
+
+      {currentAudio && (
+        <div className="now-playing">
+          <p>🎵 {currentAudio.title}</p>
         </div>
-        <button 
-          onClick={() => onPlay(item)}
-          className="play-button"
-          disabled={!item.streamingUrl}
-        >
-          ▶️ Play Now
-        </button>
-      </div>
+      )}
     </div>
   );
 };

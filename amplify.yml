@@ -3,7 +3,8 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm install --legacy-peer-deps
+        - npm ci
+        - npm install hls.js  # Add this line
     build:
       commands:
         - npm run build
